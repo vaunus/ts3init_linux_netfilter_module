@@ -33,6 +33,11 @@ Usually these can be installed using your package manager (yum/apt-get/etc).
 Usually these packages resemble the names "Linux-header-<..>", "iptables-dev",
 "GCC"
 
+On Alma Linux 9:
+```
+dnf install make g++ iptables-devel kernel-devel
+```
+
 How to install
 ==============
 
