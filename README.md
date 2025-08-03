@@ -2,8 +2,7 @@
 
 A Linux netfilter module to help filter ts3init floods on TeamSpeak 3 servers
 
-This module is a fork of the original at https://github.com/TeamSpeak-Systems/ts3init_linux_netfilter_module
-with some enhancements.
+This module is a fork of the [original module](https://github.com/TeamSpeak-Systems/ts3init_linux_netfilter_module) some enhancements.
 
 ## About
 
