@@ -1,60 +1,59 @@
-ts3init Linux netfilter module
-==============================
+# ts3init Linux netfilter module
+
 A Linux netfilter module to help filter ts3init floods on TeamSpeak 3 servers
 
-TeamSpeak 3 servers are a popular (D)Dos target. They are harder to protect than
+This module is a fork of the original at https://github.com/TeamSpeak-Systems/ts3init_linux_netfilter_module
+with some enhancements.
+
+## About
+
+TeamSpeak servers are a popular DDoS target. They are harder to protect than
 other servers because the TeamSpeak 3 protocol is based on UDP. A popular
-method, which is hard to mitigate by hosters is called *init floods*. This is
+method, which is hard to mitigate by hosts is called _init floods_. This is
 where the attacker sends many connection request to the server, usually spoofing
 the source address, to make it harder to block them. The TeamSpeak 3 protocol
 has an anti spoof check as the first stage of the connection, but the server
 program can not keep up with the flood of packets.
 
-This set of plugins is designed to let the Linux kernel, or rather netfilter,
-handle the anti spoofing stages of a new TeamSpeak 3 connection. This could be
-done on a different machine than the one the TeamSpeak 3 server is executing
-on.
+This module is designed to let the Linux kernel, or rather netfilter,
+handle the anti spoofing stages of a new TeamSpeak connection. Although this
+module is supposed to not be stable, we've been using it for some time now in
+production for thousands of customers. While it is great at blocking smaller attacks,
+it should be used in combination with more advanced techniques as well as proper host-level
+DDoS protection.
 
-Current version
-===============
-The current release is version 0.1. This version is a beta and has by no means
-been tested in a production environment. At this stage this software is merely
-a proof of concept. We invite the TeamSpeak community and of course the Linux
-community to test this tool and to contribute improvements and new ideas.
+For high quality [TeamSpeak server hosting](https://www.teamspeak.host) with advanced firewalls and DDoS protections like this please check us out.
 
-prerequisites
-=============
+## Prerequisites
+
 In order to compile and install this software you need the following things:
-* Linux kernel headers (version 2.6.35 or greater)
-* Iptables development headers
-* GCC (version 4.6.0 or greater)
 
-Usually these can be installed using your package manager (yum/apt-get/etc).
+- Linux kernel headers (version 2.6.35 or greater)
+- Iptables development headers
+- GCC (version 4.6.0 or greater)
+
+Usually these can be installed using your package manager (yum/apt/dnf etc).
 Usually these packages resemble the names "Linux-header-<..>", "iptables-dev",
 "GCC"
 
-On Alma Linux 9:
+## How to install
+
 ```
 dnf install make g++ iptables-devel kernel-devel
-```
 
-How to install
-==============
-
-```
 make
 sudo make install
 sudo depmod -a
 sudo modprobe xt_ts3init
 ```
 
-Protocol background and module description
-==========================================
+## Protocol background and module description
+
 When a TeamSpeak 3 client attempts to connect to a TeamSpeak 3 server, it sends
-out a *get cookie* packet. The server then replies with a *set cookie* packet.
+out a _get cookie_ packet. The server then replies with a _set cookie_ packet.
 This packet has some secret information about the connection details. The client
-then response with a *get puzzle* packet. This packet includes the cookie that
-it got previously. The server now validates this cookie and if it is valid, the 
+then response with a _get puzzle_ packet. This packet includes the cookie that
+it got previously. The server now validates this cookie and if it is valid, the
 server continues with the rest of the connection packets.
 
 This software packages comes with two netfilter match extensions, and three
@@ -63,14 +62,14 @@ extensions and some other netfilter modules, can handle the initial connection
 phase for a TeamSpeak 3 server. This prevents any packet, with a spoofed source
 ip address, to reach the TeamSpeak 3 server.
 
-Match extensions
-================
+# Match extensions
 
-ts3init_get_cookie
-------------------
-Matches if the packet in question is a valid TeamSpeak 3 *get cookie* packet
+## ts3init_get_cookie
+
+Matches if the packet in question is a valid TeamSpeak 3 _get cookie_ packet
 from the client.
 There are additional parameters that can be set:
+
 ```
 $ iptables -m ts3init_get_cookie -h
 <..>
@@ -79,16 +78,18 @@ ts3init_get_cookie match options:
   --check-time sec              Check packet send time request.
                                 May be off by sec seconds.
 ```
-* `min-client` checks that the client version in the packet is at least the
-  version specified. 
-* `check-time` compares the unix-timestamp in the client packet to the unix-time
+
+- `min-client` checks that the client version in the packet is at least the
+  version specified.
+- `check-time` compares the unix-timestamp in the client packet to the unix-time
   on the server. If they differ too much, the packet is not matched.
 
-ts3init_get_puzzle
-------------------
-Matches if the packet in question is a valid TeamSpeak 3 *get puzzle* packet
+## ts3init_get_puzzle
+
+Matches if the packet in question is a valid TeamSpeak 3 _get puzzle_ packet
 from the client.
 There are additional parameters that can be set:
+
 ```
 $ iptables -m ts3init_get_puzzle -h
 <..>
@@ -99,9 +100,10 @@ ts3init_get_puzzle match options:
                                A source could be /dev/random.
   --random-seed-file <file>    Read the seed from a file.
 ```
-* `min-client` checks that the client version in the packet is at least the
-  version specified. 
-* `check-cookie` matches if it matches the cookie that was generated in the
+
+- `min-client` checks that the client version in the packet is at least the
+  version specified.
+- `check-cookie` matches if it matches the cookie that was generated in the
   netfilter target extension `TS3INIT_SET_COOKIE`. To match the seed needs to be
   exactly the same. It is possible to check cookies that were generated on a
   different machine, provided that those machines have the same date and time,
@@ -110,10 +112,11 @@ ts3init_get_puzzle match options:
   `check-cookie` is specified, either `random-seed` or `random-seed-file` needs
   to be specified too.
 
-ts3init
--------
-Matches a ts3init packet, by checking if the packet starts with the *TS3INIT1*.
+## ts3init
+
+Matches a ts3init packet, by checking if the packet starts with the _TS3INIT1_.
 Additional header checks for client and server packets can be specified:
+
 ```
 $ iptables -m ts3init -h
 <..>
@@ -122,26 +125,26 @@ ts3init match options:
   --server                     Match ts3init server packets.
   --command <command>          Match packets with the specified command.
 ```
-* `client` checks that the packet has a valid ts3init client header
-* `server` checks that the packet has a valid ts3init server header
-* `command` checks that the packet has the specified command in its header.
-  Requires either --client or --server.
-  
-Target extensions
-=================
 
-TS3INIT_GET_COOKIE
-------------------
-Rewrites the packet into a *get_cookie* packet and then accepts it.
+- `client` checks that the packet has a valid ts3init client header
+- `server` checks that the packet has a valid ts3init server header
+- `command` checks that the packet has the specified command in its header.
+  Requires either --client or --server.
+
+# Target extensions
+
+## TS3INIT_GET_COOKIE
+
+Rewrites the packet into a _get_cookie_ packet and then accepts it.
 It is assumed that the packet is a ts3init packet of any kind, any other packet
-may or may not result in a valid *get_cookie* packet. Used for pre 3.1 clients,
+may or may not result in a valid _get_cookie_ packet. Used for pre 3.1 clients,
 as an alternative to `TS3INIT_RESET`. It takes no parameters.
 
-TS3INIT_SET_COOKIE
-------------------
-Generates a *set_cookie* packet to the matched *get_cookie* packet. The orginal
-*get_cookie* packet is dropped. It is assumed that the orginal packet is a 
-*get_cookie* packet, no attempt is made to check if that is true. It should
+## TS3INIT_SET_COOKIE
+
+Generates a _set_cookie_ packet to the matched _get_cookie_ packet. The orginal
+_get_cookie_ packet is dropped. It is assumed that the orginal packet is a
+_get_cookie_ packet, no attempt is made to check if that is true. It should
 always be used with `ts3init_get_puzzle` match.
 
 ```
@@ -154,40 +157,41 @@ TS3INIT_SET_COOKIE target options:
   --random-seed-file <file>    Read the seed from a file.
 ```
 
-* `zero-random-sequence` forces the returned *random-sequence* to be always
+- `zero-random-sequence` forces the returned _random-sequence_ to be always
   zero. This allows the target to not look at the payload of the packet.
-* `random-seed` is used to generate the cookie returned in the *set-cookie*
-  packet. *seed* must be a 120 character long hexstring.
-* `random-seed-file` read the `random-seed` from a file. The file must contain
+- `random-seed` is used to generate the cookie returned in the _set-cookie_
+  packet. _seed_ must be a 120 character long hexstring.
+- `random-seed-file` read the `random-seed` from a file. The file must contain
   a 120 character long hexstring, without any newlines.
 
-TS3INIT_RESET
--------------
-Drops the packet and sends a *reset* packet back to the sender. The
+## TS3INIT_RESET
+
+Drops the packet and sends a _reset_ packet back to the sender. The
 sender should always be the TeamSpeak 3 client. Starting with the TeamSpeak 3.1
-client, the client will react to the reset packet by resending the *get cookie*
+client, the client will react to the reset packet by resending the _get cookie_
 to the server. Older clients do not handle this packet. It takes no parameters.
 
-How to use
-==========
+# How to use
+
 The idea for which these extensions were developed was to create a few iptables
 rules that do the anti spoofing phase for a TeamSpeak server. This can be done
 as follows:
-* [recommended] Disable connection tracking with the help of raw table
-* Create ipset: ts3_authorized with a timeout of 30 seconds
-* If a source ip address is in the ipset ts3_authorized, renew the entry in the
+
+- [recommended] Disable connection tracking with the help of raw table
+- Create ipset: ts3_authorized with a timeout of 30 seconds
+- If a source ip address is in the ipset ts3_authorized, renew the entry in the
   set to update the timeout then accept the packet.
-* Use `ts3init_get_cookie` matches to get connection requests and reply with
+- Use `ts3init_get_cookie` matches to get connection requests and reply with
   `TS3INIT_SET_COOKIE`.
-* Use `ts3init_get_puzzle` matches to get the cookie replies from the client.
+- Use `ts3init_get_puzzle` matches to get the cookie replies from the client.
   If they match, add the source ip address to the ts3_authorizing ipset and then
   reply with `TS3INIT_RESET`
-* Drop all other packets
+- Drop all other packets
 
 It is possible to make a more detailed firewall.
 
-Example iptables setup
-======================
+# Example iptables setup
+
 There are two examples included: _simple_ and _complex_. Both use ipset to
 create a set of whitelisted ip addresses that are allowed to send packets to the
 TeamSpeak3 server. The simple example does the bare minimum to do the ip
@@ -211,4 +215,3 @@ The authorized_ft set keeps a list of authorized ip addresses (not ports). Only
 these ip addresses are allowed to send traffic to the file transfer
 port. Since there is no way to know in advance what source port the TeamSpeak 3
 client is going to use for file transfer, this is the best we can do.
-
